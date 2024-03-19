@@ -12,7 +12,7 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 #
-
+from oslo_config import cfg
 from taskflow.patterns import linear_flow
 from taskflow.patterns import unordered_flow
 
@@ -21,7 +21,9 @@ from octavia.controller.worker.v2.tasks import amphora_driver_tasks
 from octavia.controller.worker.v2.tasks import database_tasks
 from octavia.controller.worker.v2.tasks import lifecycle_tasks
 from octavia.controller.worker.v2.tasks import network_tasks
+from octavia.controller.worker.v2.tasks import notification_tasks
 
+CONF = cfg.CONF
 
 class MemberFlows(object):
 
@@ -61,6 +63,12 @@ class MemberFlows(object):
                                    requires=(constants.LISTENERS,
                                              constants.LOADBALANCER_ID)))
 
+        if CONF.controller_worker.event_notifications:
+            create_member_flow.add(
+                notification_tasks.SendCreateMemberNotification(
+                    requires=constants.LOADBALANCER
+                )
+            )
         return create_member_flow
 
     def get_delete_member_flow(self):
@@ -101,6 +109,12 @@ class MemberFlows(object):
                                    requires=(constants.LISTENERS,
                                              constants.LOADBALANCER_ID)))
 
+        if CONF.controller_worker.event_notifications:
+            delete_member_flow.add(
+                notification_tasks.SendDeleteMemberNotification(
+                    requires=constants.MEMBER
+                )
+            )
         return delete_member_flow
 
     def get_update_member_flow(self):
@@ -128,7 +142,12 @@ class MemberFlows(object):
                                MarkLBAndListenersActiveInDB(
                                    requires=(constants.LISTENERS,
                                              constants.LOADBALANCER_ID)))
-
+        if CONF.controller_worker.event_notifications:
+            update_member_flow.add(
+                notification_tasks.SendUpdateMemberNotification(
+                    requires=constants.MEMBER
+                )
+            )
         return update_member_flow
 
     def get_batch_update_members_flow(self, old_members, new_members,

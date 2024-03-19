@@ -38,8 +38,78 @@ class BaseNotificationTask(task.Task):
             self.event_type,
             loadbalancer
         )
+  
+class ListenerNotificationTask(task.Task):
+    event_type = None
 
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self._rpc_notifier = rpc.get_notifier()
 
+    def execute(self, listener):
+        ctx = context.RequestContext(
+            # loadbalancer_id=listener[constants.LOADBALANCER_ID],
+            project_id = listener[constants.PROJECT_ID])
+        LOG.debug(f"Sending rpc notification: {self.event_type} "
+                  f"{listener[constants.LISTENER_ID]}")
+        self._rpc_notifier.info(
+            ctx,
+            self.event_type,
+            listener
+        )
+class PoolNotificationTask(task.Task):
+    event_type = None
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self._rpc_notifier = rpc.get_notifier()
+
+    def execute(self, pool_id):
+        ctx = context.RequestContext()
+            # loadbalancer_id=listener[constants.LOADBALANCER_ID],
+            # project_id = pool_id[constants.PROJECT_ID])
+        # LOG.debug(f"Sending rpc notification: {self.event_type} "
+        #           f"{pool_id[constants.POOL_ID]}")
+        self._rpc_notifier.info(
+            ctx,
+            self.event_type,
+            pool_id
+        )
+        
+class MemberNotificationTask(task.Task):
+    event_type = None
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self._rpc_notifier = rpc.get_notifier()
+
+    def execute(self, member):
+        ctx = context.RequestContext(
+            # loadbalancer_id=listener[constants.LOADBALANCER_ID],
+            project_id = member[constants.PROJECT_ID])
+        LOG.debug(f"Sending rpc notification: {self.event_type} "
+                  f"{member[constants.MEMBER_ID]}")
+        self._rpc_notifier.info(
+            ctx,
+            self.event_type,
+            member
+        )
+
+class HealthMonitorNotificationTask(task.Task):
+    event_type = None
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self._rpc_notifier = rpc.get_notifier()
+
+    def execute(self, health_mon):
+        ctx = context.RequestContext(
+            # loadbalancer_id=listener[constants.LOADBALANCER_ID],
+            project_id = health_mon[constants.PROJECT_ID])
+        LOG.debug(f"Sending rpc notification: {self.event_type} "
+                  f"{health_mon[constants.HEALTHMONITOR_ID]}")
+        self._rpc_notifier.info(
+            ctx,
+            self.event_type,
+            health_mon
+        )                
 class SendUpdateNotification(BaseNotificationTask):
     event_type = 'octavia.loadbalancer.update.end'
 
@@ -50,3 +120,37 @@ class SendCreateNotification(BaseNotificationTask):
 
 class SendDeleteNotification(BaseNotificationTask):
     event_type = 'octavia.loadbalancer.delete.end'
+
+
+class SendCreateListenerNotification(BaseNotificationTask):
+    event_type  = 'octavia.listener.create.end'
+class SendUpdateListenerNotification(ListenerNotificationTask):
+    event_type  = 'octavia.listener.update.end'
+class SendDeleteListenerNotification(ListenerNotificationTask):
+    event_type  = 'octavia.listener.delete.end'
+
+
+class SendCreatePoolNotification(BaseNotificationTask):
+    event_type  = 'octavia.pool.create.end'
+class SendUpdatePoolNotification(PoolNotificationTask):
+    event_type  = 'octavia.pool.update.end'
+class SendDeletePoolNotification(PoolNotificationTask):
+    event_type  = 'octavia.pool.delete.end'
+
+
+class SendCreateMemberNotification(BaseNotificationTask):
+    event_type  = 'octavia.member.create.end'
+class SendUpdateMemberNotification(MemberNotificationTask):
+    event_type  = 'octavia.member.update.end'
+class SendDeleteMemberNotification(MemberNotificationTask):
+    event_type  = 'octavia.member.delete.end'
+
+
+class SendHeathMonitorNotification(BaseNotificationTask):
+    event_type  = 'octavia.health-monitor.create.end'
+class SendHeathMonitorUpdateNotification(HealthMonitorNotificationTask):
+    event_type  = 'octavia.health-monitor.update.end'
+class SendHeathMonitorDeleteNotification(HealthMonitorNotificationTask):
+    event_type  = 'octavia.health-monitor.delete.end'
+# class SendCreateListenerNotification(BaseNotificationTask):
+    # event_type  = 'octavia.listener.create.end'

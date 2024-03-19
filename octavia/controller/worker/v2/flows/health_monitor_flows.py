@@ -12,13 +12,16 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 #
-
+from oslo_config import cfg
 from taskflow.patterns import linear_flow
 
 from octavia.common import constants
 from octavia.controller.worker.v2.tasks import amphora_driver_tasks
 from octavia.controller.worker.v2.tasks import database_tasks
 from octavia.controller.worker.v2.tasks import lifecycle_tasks
+from octavia.controller.worker.v2.tasks import notification_tasks
+
+CONF = cfg.CONF
 
 
 class HealthMonitorFlows(object):
@@ -43,7 +46,12 @@ class HealthMonitorFlows(object):
             requires=constants.POOL_ID))
         create_hm_flow.add(database_tasks.MarkLBAndListenersActiveInDB(
             requires=(constants.LOADBALANCER_ID, constants.LISTENERS)))
-
+        if CONF.controller_worker.event_notifications:
+            create_hm_flow.add(
+                notification_tasks.SendCreateNotification(
+                    requires=constants.LOADBALANCER
+                )
+            )
         return create_hm_flow
 
     def get_delete_health_monitor_flow(self):
@@ -72,7 +80,13 @@ class HealthMonitorFlows(object):
             requires=constants.POOL_ID))
         delete_hm_flow.add(database_tasks.MarkLBAndListenersActiveInDB(
             requires=(constants.LOADBALANCER_ID, constants.LISTENERS)))
-
+        
+        if CONF.controller_worker.event_notifications:
+            delete_hm_flow.add(
+                notification_tasks.SendHeathMonitorDeleteNotification(
+                    requires=(constants.HEALTH_MON)
+                )
+            )
         return delete_hm_flow
 
     def get_update_health_monitor_flow(self):
@@ -97,5 +111,10 @@ class HealthMonitorFlows(object):
             requires=constants.POOL_ID))
         update_hm_flow.add(database_tasks.MarkLBAndListenersActiveInDB(
             requires=(constants.LOADBALANCER_ID, constants.LISTENERS)))
-
+        if CONF.controller_worker.event_notifications:
+            update_hm_flow.add(
+                notification_tasks.SendHeathMonitorUpdateNotification(
+                    requires=(constants.HEALTH_MON)
+                )
+            )
         return update_hm_flow

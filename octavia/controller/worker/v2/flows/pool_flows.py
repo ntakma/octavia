@@ -12,14 +12,16 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 #
-
+from oslo_config import cfg
 from taskflow.patterns import linear_flow
 
 from octavia.common import constants
 from octavia.controller.worker.v2.tasks import amphora_driver_tasks
 from octavia.controller.worker.v2.tasks import database_tasks
 from octavia.controller.worker.v2.tasks import lifecycle_tasks
+from octavia.controller.worker.v2.tasks import notification_tasks
 
+CONF = cfg.CONF
 
 class PoolFlows(object):
 
@@ -41,7 +43,12 @@ class PoolFlows(object):
             requires=constants.POOL_ID))
         create_pool_flow.add(database_tasks.MarkLBAndListenersActiveInDB(
             requires=(constants.LOADBALANCER_ID, constants.LISTENERS)))
-
+        if CONF.controller_worker.event_notifications:
+            create_pool_flow.add(
+                notification_tasks.SendCreatePoolNotification(
+                    requires=constants.LOADBALANCER
+                )
+            )
         return create_pool_flow
 
     def get_delete_pool_flow(self):
@@ -66,7 +73,12 @@ class PoolFlows(object):
             requires=[constants.PROJECT_ID, constants.POOL_CHILD_COUNT]))
         delete_pool_flow.add(database_tasks.MarkLBAndListenersActiveInDB(
             requires=(constants.LOADBALANCER_ID, constants.LISTENERS)))
-
+        if CONF.controller_worker.event_notifications:
+            delete_pool_flow.add(
+                notification_tasks.SendDeletePoolNotification(
+                    requires=constants.POOL_ID
+                )
+            )
         return delete_pool_flow
 
     def get_delete_pool_flow_internal(self, pool_id):
@@ -117,5 +129,10 @@ class PoolFlows(object):
             requires=constants.POOL_ID))
         update_pool_flow.add(database_tasks.MarkLBAndListenersActiveInDB(
             requires=(constants.LOADBALANCER_ID, constants.LISTENERS)))
-
+        if CONF.controller_worker.event_notifications:
+            update_pool_flow.add(
+                notification_tasks.SendUpdatePoolNotification(
+                    requires=constants.POOL_ID
+                )
+            )
         return update_pool_flow
