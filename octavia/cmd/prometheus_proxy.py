@@ -1,3 +1,4 @@
+#!/usr/bin/python3
 #    Copyright 2022 Red Hat
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -18,21 +19,25 @@
 # of metrics. It also aligns the terms to be consistent with Octavia
 # terminology.
 
+from http.server import HTTPServer
 from http.server import SimpleHTTPRequestHandler
-from http.server import ThreadingHTTPServer
 import os
 import signal
+import socketserver
 import sys
 import threading
 import time
 import traceback
-import urllib.request
+import subprocess
+
+#import urllib.request
 
 import psutil
 
-from octavia.amphorae.backends.utils import network_namespace
-from octavia.common import constants as consts
+#from octavia.amphorae.backends.utils import network_namespace
+# from octavia.common import constants as consts
 
+METRIC_CMD = "ip netns exec amphora-haproxy curl -vv http://127.0.0.1:9101/metrics"
 METRICS_URL = "http://127.0.0.1:9101/metrics"
 PRINT_REJECTED = False
 EXIT_EVENT = threading.Event()
@@ -396,7 +401,7 @@ METRIC_MAP = {
         ("octavia_pool_client_aborts_total{", None, {"proxy=": "pool="}),
     "haproxy_backend_server_aborts_total ":
         ("octavia_pool_member_aborts_total ",
-         "# HELP octavia_pool_member_aborts_total Total number of data "
+         "# HELP octavia_pool_server_aborts_total Total number of data "
          "transfers aborted by the server.\n", None),
     "haproxy_backend_server_aborts_total{":
         ("octavia_pool_member_aborts_total{", None, {"proxy=": "pool="}),
@@ -721,7 +726,6 @@ class PrometheusProxy(SimpleHTTPRequestHandler):
         mem_metric_string = f"octavia_loadbalancer_memory {mem_pcnt:.1f}\n"
         metrics_buffer += mem_metric_string
         return metrics_buffer
-
     def do_GET(self):
         metrics_buffer = ""
 
@@ -729,9 +733,10 @@ class PrometheusProxy(SimpleHTTPRequestHandler):
         metrics_buffer = self._add_memory_utilization(metrics_buffer)
 
         try:
-            with urllib.request.urlopen(METRICS_URL) as source:  # nosec
-                lines = source.readlines()
-                for line in lines:
+#            with urllib.request.urlopen(METRICS_URL) as source:  # nosec
+#                lines = source.readlines()
+                process = subprocess.Popen(METRIC_CMD, stdout=subprocess.PIPE, shell=True)
+                for line in process.stdout:
                     line = line.decode("utf-8")
                     # Don't report metrics for the internal prometheus
                     # proxy loop. The user facing listener will still be
@@ -783,6 +788,12 @@ def shutdown_thread(http):
     http.shutdown()
 
 
+# TODO(johnsom) Remove and switch to ThreadingHTTPServer once python3.7 is
+# the minimum version supported.
+class ThreadedHTTPServer(socketserver.ThreadingMixIn, HTTPServer):
+    daemon_threads = True
+
+
 def main():
     global PRINT_REJECTED
     try:
@@ -797,15 +808,19 @@ def main():
         # The amphora-haproxy network namespace may not be present, so handle
         # it gracefully.
         try:
-            with network_namespace.NetworkNamespace(consts.AMPHORA_NAMESPACE):
-                httpd = ThreadingHTTPServer(('127.0.0.1', 9102),
-                                            PrometheusProxy)
-                shutdownthread = threading.Thread(target=shutdown_thread,
-                                                  args=(httpd,))
-                shutdownthread.start()
-
-                httpd.daemon_threads = True
-                print("Now serving on port 9102")
-                httpd.serve_forever()
+            httpd = ThreadedHTTPServer(('0.0.0.0', 9102),
+                                       PrometheusProxy)
+            shutdownthread = threading.Thread(target=shutdown_thread,
+                                              args=(httpd,))
+            shutdownthread.start()
+            # TODO(johnsom) Uncomment this when we move to
+            #               ThreadingHTTPServer
+            # httpd.daemon_threads = True
+            print("Now serving on port 9102")
+            httpd.serve_forever()
         except Exception:
             time.sleep(1)
+
+
+if __name__ == "__main__":
+    main()
