@@ -29,7 +29,6 @@
 {% endblock peers %}
 
 {% block prometheus %}
-{% if enable_prometheus %}
 frontend prometheus-exporter-internal-endpoint
     bind 127.0.0.1:9101
     mode http
@@ -46,7 +45,6 @@ backend prometheus-exporter-internal
     timeout connect 5s
     timeout server 5s
     server prometheus-internal 127.0.0.1:9102
-{% endif %}
 {% endblock prometheus %}
 
 {% block proxies %}
