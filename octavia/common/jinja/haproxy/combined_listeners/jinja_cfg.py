@@ -187,7 +187,7 @@ class JinjaTemplater(object):
         require_insecure_fork = feature_compatibility.get(
             constants.INSECURE_FORK)
         enable_prometheus = prometheus_listener and feature_compatibility.get(
-            lib_consts.PROTOCOL_PROMETHEUS, True)
+            lib_consts.PROTOCOL_PROMETHEUS, False)
         term_https_listener = any(
             lsnr.protocol == lib_consts.PROTOCOL_TERMINATED_HTTPS for lsnr in
             listeners)
@@ -327,7 +327,7 @@ class JinjaTemplater(object):
             'timeout_tcp_inspect': (listener.timeout_tcp_inspect or
                                     CONF.haproxy_amphora.timeout_tcp_inspect),
             lib_consts.PROTOCOL_PROMETHEUS: feature_compatibility.get(
-                lib_consts.PROTOCOL_PROMETHEUS, True)
+                lib_consts.PROTOCOL_PROMETHEUS, False)
         }
         if self.connection_logging:
             ret_value['user_log_format'] = (
