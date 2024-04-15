@@ -38,8 +38,8 @@ frontend prometheus-exporter-internal-endpoint
     http-request reject
     timeout http-request 5s
     timeout client 5s
-
 {% endblock prometheus %}
+
 {% block proxies %}
     {% if loadbalancer.enabled %}
          {% for listener in loadbalancer.listeners if listener.enabled %}
