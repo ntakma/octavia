@@ -28,6 +28,7 @@
 {{ peers_macro(constants, loadbalancer) }}
 {% endblock peers %}
 
+{% block prometheus %}
 frontend prometheus-exporter-internal-endpoint
     bind 127.0.0.1:9101
     mode http
@@ -38,6 +39,7 @@ frontend prometheus-exporter-internal-endpoint
     timeout http-request 5s
     timeout client 5s
 
+{% endblock prometheus %}
 {% block proxies %}
     {% if loadbalancer.enabled %}
          {% for listener in loadbalancer.listeners if listener.enabled %}
